@@ -1,0 +1,50 @@
+body {
+  margin-top: 20px;
+}
+
+.content-margin-top {
+  margin-top: 80px;
+}
+
+.strong-title {
+  font-size: 30px;
+  font-weight: 800;
+}
+
+/* エラー文 */
+.error {
+  color: red;
+  /*border: 2px solid red;*/
+}
+
+/* メッセージ部分のデザイン */
+.msg {
+  clear: both;
+  border-top: 1px solid #ccc;
+  padding: 10px 0;
+}
+
+.msg img {
+  float: left;
+  margin-right: 5px;
+}
+
+.msg p {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+.msg .day,
+.msg .day a {
+  font-size: 80%;
+  color: #999;
+}
+
+/* ページング */
+ul {
+  list-style: none;
+}
+
+li {
+  display: inline-block;
+}

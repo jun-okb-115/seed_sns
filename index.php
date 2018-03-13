@@ -51,7 +51,7 @@ session_start();
 // OUTER JOIN(left join とright join) = 複数のテーブルがあり、それらを結合する際に優先テーブルを一つ決め、そこにある情報は全て表示しながら、他のテーブルの情報に対するデータがあれば表示する
 //優先テーブルに指定されると、そのテーブルの情報は全て表示される
 
-  $tweet_sql = 'SELECT * FROM `tweets` LEFT JOIN `members` ON `tweets`.`member_id`= `members`.`member_id` ORDER BY `tweets`.`created` DESC';
+  $tweet_sql = 'SELECT * FROM `tweets` LEFT JOIN `members` ON `tweets`.`member_id`= `members`.`member_id` WHERE `delete_flag`=0 ORDER BY `tweets`.`created` DESC';
   $tweet_stmt = $dbh->prepare($tweet_sql);
   $tweet_stmt->execute();
   
@@ -66,9 +66,9 @@ session_start();
    }
    $tweet_list[] = $tweet;
   }
- echo '<pre>';
-  var_dump($tweet_list);
-echo '</pre>';
+//  echo '<pre>';
+//   var_dump($tweet_list);
+// echo '</pre>';
   // var_dump($_SESSION);
 
  ?>
@@ -153,8 +153,9 @@ echo '</pre>';
             <a href="view.html">
               <?php echo $tweet['modified']; ?>
             </a>
-            [<a href="#" style="color: #00994C;">編集</a>]
-            [<a href="#" style="color: #F33;">削除</a>]
+<!-- パラメーター -->
+            [<a href="edit.php?tweet_id=<?php echo $tweet['tweet_id']; ?>" style="color: #00994C;">編集</a>]
+            [<a href="delete.php?tweet_id=<?php echo $tweet['tweet_id']; ?>" style="color: #F33;">削除</a>]
           </p>
         </div>
          <?php } ?>

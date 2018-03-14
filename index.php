@@ -44,14 +44,53 @@ session_start();
     }
   }
   
-// 一覧用の投稿全件取得
+  // ページング機能
+  // 空の変数を用意
+  $page = '';
+
+  // パラメーターが存在していたらページ番号を代入
+  if(isset($_GET['page'])){
+    $page = $_GET['page'];
+  }else{
+    $page = 1;
+  }
+  // 1以下のイレギュラーな数字が入ってたとき、ページを強制的に1とする
+  // max カンマ区切りで羅列された数字の中から最大の数字を取得する
+  $page = max($page,1);
+
+  // 1ページ分の表示件数を指定
+  $page_number = 5;
+
+  // データの件数から最大のページを計算する
+  // SQLで計算するデータを取得
+  $page_sql = 'SELECT COUNT(*) AS `page_count` FROM `tweets`WHERE `delete_flag`=0';
+  $page_stmt = $dbh->prepare($page_sql);
+  $page_stmt->execute();
+
+ // 全件取得(論理削除されていないもの)
+  $page_count = $page_stmt->fetch(PDO::FETCH_ASSOC);
+
+ // ceil 小数点切り上げ
+ // 1~5 1ページ 6~10 2ページ...
+  $all_page_number = ceil($page_count['page_count']/ $page_number);
+
+ // パラーメーターのページ番号が最大を超えていれば、強制的に最後のページとする。
+ // min カンマ区切りで羅列された数字の中から最小の数字を取得する
+  $page = min($page,$all_page_number);
+
+ // 表示するデータの取得開始場所
+  $start = ($page - 1) * $page_number;
+
+// 一覧用の投稿全件取得 
 // テーブル結合
 // INNER JOIN とOUTER JOIN(left join とright join)
 // INNER JOIN = 両方のテーブルに存在するデータのみ取得
 // OUTER JOIN(left join とright join) = 複数のテーブルがあり、それらを結合する際に優先テーブルを一つ決め、そこにある情報は全て表示しながら、他のテーブルの情報に対するデータがあれば表示する
 //優先テーブルに指定されると、そのテーブルの情報は全て表示される
+// LIMIT = テーブルから取得する範囲を指定
+// LIMIT 取得する配列キー
 
-  $tweet_sql = 'SELECT * FROM `tweets` LEFT JOIN `members` ON `tweets`.`member_id`= `members`.`member_id` WHERE `delete_flag`=0 ORDER BY `tweets`.`created` DESC';
+  $tweet_sql = "SELECT `tweets`.*,`members`.`nick_name`,`members`.`picture_path` FROM `tweets` LEFT JOIN `members` ON `tweets`.`member_id`= `members`.`member_id` WHERE `delete_flag`=0 ORDER BY `tweets`.`modified` DESC LIMIT ".$start.",".$page_number;
   $tweet_stmt = $dbh->prepare($tweet_sql);
   $tweet_stmt->execute();
   
@@ -133,9 +172,18 @@ session_start();
           <ul class="paging">
             <input type="submit" class="btn btn-info" value="つぶやく">
                 &nbsp;&nbsp;&nbsp;&nbsp;
-                <li><a href="index.html" class="btn btn-default">前</a></li>
+                <?php if($page == 1) { ?>
+                <li>前</li>
+                <?php } else{ ?>
+                <li><a href="index.php?page=<?php echo $page -1 ?>" class="btn btn-default">前</a></li>
+                <?php }?>
                 &nbsp;&nbsp;|&nbsp;&nbsp;
-                <li><a href="index.html" class="btn btn-default">次</a></li>
+                <?php if($page == $all_page_number){ ?>
+                <li>次</li>
+                <?php } else { ?>
+                <li><a href="index.php?page=<?php echo $page +1 ?>" class="btn btn-default">次</a></li>
+                <li><?php echo $page;?> / <?php echo $all_page_number;?></li>
+                <?php } ?>
           </ul>
         </form>
       </div>
@@ -144,18 +192,23 @@ session_start();
         <?php foreach ($tweet_list as $tweet ) { ?>
           
         <div class="msg">
-          <img src="picture_path/<?php echo $login_member['picture_path'];?>" width="48" height="48">
+          <img src="picture_path/<?php echo $tweet['picture_path'];?>" width="48" height="48">
           <p>
-            <?php echo $tweet['tweet']; ?><span class="name"><?php echo $login_member['nick_name'];?></span>
+            <?php echo $tweet['tweet']; ?><span class="name"><?php echo $tweet['nick_name'];?></span>
+            <?php if($_SESSION['id'] !== $tweet['member_id'] ) {?>
             [<a href="#">Re</a>]
+            <?php }?>
           </p>
           <p class="day">
-            <a href="view.html">
+            <a href="view.php?tweet_id=<?php echo $tweet['tweet_id']; ?>">
               <?php echo $tweet['modified']; ?>
             </a>
 <!-- パラメーター -->
+<?php if($_SESSION['id'] == $tweet['member_id'] ) {?>
             [<a href="edit.php?tweet_id=<?php echo $tweet['tweet_id']; ?>" style="color: #00994C;">編集</a>]
             [<a href="delete.php?tweet_id=<?php echo $tweet['tweet_id']; ?>" style="color: #F33;">削除</a>]
+            <?php } ?>
+            
           </p>
         </div>
          <?php } ?>
@@ -169,5 +222,5 @@ session_start();
     <script src="assets/js/jquery-3.1.1.js"></script>
     <script src="assets/js/jquery-migrate-1.4.1.js"></script>
     <script src="assets/js/bootstrap.js"></script>
-  </bo
+  </body>
 </html>

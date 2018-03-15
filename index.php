@@ -91,6 +91,7 @@ session_start();
 // LIMIT 取得する配列キー
 
   $tweet_sql = "SELECT `tweets`.*,`members`.`nick_name`,`members`.`picture_path` FROM `tweets` LEFT JOIN `members` ON `tweets`.`member_id`= `members`.`member_id` WHERE `delete_flag`=0 ORDER BY `tweets`.`modified` DESC LIMIT ".$start.",".$page_number;
+
   $tweet_stmt = $dbh->prepare($tweet_sql);
   $tweet_stmt->execute();
   
@@ -182,8 +183,9 @@ session_start();
                 <li>次</li>
                 <?php } else { ?>
                 <li><a href="index.php?page=<?php echo $page +1 ?>" class="btn btn-default">次</a></li>
-                <li><?php echo $page;?> / <?php echo $all_page_number;?></li>
                 <?php } ?>
+                <li><?php echo $page;?> / <?php echo $all_page_number;?></li>
+                
           </ul>
         </form>
       </div>
@@ -196,7 +198,7 @@ session_start();
           <p>
             <?php echo $tweet['tweet']; ?><span class="name"><?php echo $tweet['nick_name'];?></span>
             <?php if($_SESSION['id'] !== $tweet['member_id'] ) {?>
-            [<a href="#">Re</a>]
+            [<a href="reply.php?tweet_id=<?php echo $tweet['tweet_id']; ?>">Re</a>]
             <?php }?>
           </p>
           <p class="day">
@@ -207,7 +209,11 @@ session_start();
 <?php if($_SESSION['id'] == $tweet['member_id'] ) {?>
             [<a href="edit.php?tweet_id=<?php echo $tweet['tweet_id']; ?>" style="color: #00994C;">編集</a>]
             [<a href="delete.php?tweet_id=<?php echo $tweet['tweet_id']; ?>" style="color: #F33;">削除</a>]
-            <?php } ?>
+             <?php } ?>
+             <!-- 返信もとのメッセージの詳細 -->
+             <?php if($tweet['reply_tweet_id'] >=1) {?>
+            <a href="view.php?tweet_id=<?php echo $tweet['reply_tweet_id']; ?>" style="color: #a9a9a9">返信もとのメッセージを表示</a>
+           <?php }?>
             
           </p>
         </div>

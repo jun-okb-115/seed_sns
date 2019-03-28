@@ -1,5 +1,5 @@
 <?php 
-
+echo 'a';
     $dsn = 'mysql:dbname=seed_sns;host=localhost';
   
     $user = 'root';

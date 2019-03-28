@@ -1,15 +1,23 @@
 <?php
-session_start();
+
+ // function.phpを読み込み
+ require('function.php');
+ // DB接続
  require('dbconnect.php');
+
+ // ログインチェック
+ login_check();
+
+ // delete();
 
    // ログインチェック
    // 一時間ログインしていない場合、再度ログイン
-  if (isset($_SESSION['id']) && $_SESSION['time'] + 3600 > time()) {
-    // ログインしている
-    // ログイン時間の更新
-    $_SESSION['time'] = time();
+  // if (isset($_SESSION['id']) && $_SESSION['time'] + 3600 > time()) {
+  //   // ログインしている
+  //   // ログイン時間の更新
+  //   $_SESSION['time'] = time();
 
-    //ログインしているユーザーの情報を取得
+  //   //ログインしているユーザーの情報を取得
   $login_sql = 'SELECT * FROM `members` WHERE `member_id`=?';
   $login_data = array($_SESSION['id']);
   $login_stmt = $dbh->prepare($login_sql);
@@ -18,11 +26,11 @@ session_start();
   $login_member = $login_stmt->fetch(PDO::FETCH_ASSOC);
 
 
-    // ログインしていない時,または時間切れの場合
-  }else{
-    header('Location: login.php');
-    exit;
-  }
+  //   // ログインしていない時,または時間切れの場合
+  // }else{
+  //   header('Location: login.php');
+  //   exit;
+  // }
 
   if(!empty($_POST)){
 
@@ -38,7 +46,7 @@ session_start();
       // created=現在日時。now()を使用
       // modified=現在日時。now()を使用
       $sql = 'INSERT INTO `tweets` SET `tweet`=?, `member_id`=?,`reply_tweet_id`=?,`created`=NOW(),`modified`=NOW()';
-      $data = array($_POST['tweet'],$_SESSION['id'],-1);
+      $data = array($_POST['tweet'],$_SESSION['id'],-1); //???
       $stmt = $dbh->prepare($sql);
       $stmt->execute($data);
     }
@@ -81,7 +89,7 @@ session_start();
  // 表示するデータの取得開始場所
   $start = ($page - 1) * $page_number;
 
-// 一覧用の投稿全件取得 
+// 一覧用の投稿全件取得
 // テーブル結合
 // INNER JOIN とOUTER JOIN(left join とright join)
 // INNER JOIN = 両方のテーブルに存在するデータのみ取得
@@ -104,12 +112,47 @@ session_start();
    if($tweet == false){
     break;
    }
+
+
+ // like数を取得するSQL文
+   $like_sql = 'SELECT COUNT(*) as `like_cnt` FROM `likes` WHERE `tweet_id`=?';
+   $like_data = array($tweet['tweet_id']);
+   $like_stmt = $dbh->prepare($like_sql);
+   $like_stmt->execute($like_data);
+// 各投稿ごとのいいね
+   $like_count = $like_stmt->fetch(PDO::FETCH_ASSOC);
+
+// 1行分のデータに新しいキーを用意し、$like_countを代入
+   $tweet['like_cnt'] = $like_count['like_cnt'];
+
+// ログインしている人がlikeしているかどうかのデータ判定
+   $login_like_sql = 'SELECT COUNT(*)as `login_count` FROM `likes` WHERE `member_id`=? AND `tweet_id`=?';
+   $login_like_data = array($_SESSION['id'],$tweet['tweet_id']);
+   $login_like_stmt = $dbh->prepare($login_like_sql);
+   $login_like_stmt->execute($login_like_data);
+
+// フェッチで取得
+   $login_like_number = $login_like_stmt->fetch(PDO::FETCH_ASSOC);
+
+// ログインしているユーザーがいいねしているかどうか判定
+    $tweet['login_like_flag'] = $login_like_number['login_count'];
+
    $tweet_list[] = $tweet;
   }
-//  echo '<pre>';
-//   var_dump($tweet_list);
-// echo '</pre>';
-  // var_dump($_SESSION);
+
+  // 自分がフォローしているユーザーの数
+  $following_sql = 'SELECT COUNT(*) as `following_count` FROM `follows` WHERE `member_id`=?';
+  $following_data = array($_SESSION['id']);
+  $following_stmt = $dbh->prepare($following_sql);
+  $following_stmt->execute($following_data);
+  $following = $following_stmt->fetch(PDO::FETCH_ASSOC);
+
+  // 自分がフォローされているユーザーの数
+  $follower_sql = 'SELECT COUNT(*) as `follower_count` FROM `follows` WHERE `follower_id`=?';
+  $follower_data = array($_SESSION['id']);
+  $follower_stmt = $dbh->prepare($follower_sql);
+  $follower_stmt->execute($follower_data);
+  $follower = $follower_stmt->fetch(PDO::FETCH_ASSOC);
 
  ?>
 
@@ -157,9 +200,9 @@ session_start();
   <div class="container">
     <div class="row">
       <div class="col-md-4 content-margin-top">
-        <legend>ようこそ<?php echo $login_member['nick_name'];?>さん</legend>
+        <legend>ようこそ<?php echo $login_member['nick_name'];?>さん&nbsp;<img src="picture_path/<?php echo $login_member['picture_path'];?>" width="48" height="45"></legend>
         <form method="post" action="" class="form-horizontal" role="form">
-            <!-- つぶやき -->
+<!-- つぶやき -->
             <div class="form-group">
               <label class="col-sm-4 control-label">つぶやき</label>
               <div class="col-sm-8">
@@ -170,6 +213,7 @@ session_start();
                 <?php } ?>
               </div>
             </div>
+<!-- pageing -->
           <ul class="paging">
             <input type="submit" class="btn btn-info" value="つぶやく">
                 &nbsp;&nbsp;&nbsp;&nbsp;
@@ -189,17 +233,32 @@ session_start();
           </ul>
         </form>
       </div>
-
+<!-- 全件取得 -->
       <div class="col-md-8 content-margin-top">
+<!-- フォロー、フォロワーの表示 -->
+        <div class="msg_header">
+          <a href="follow.php">Followers<span class="badge badge-pill badge-default"><?php echo $follower['follower_count']; ?></span></a>
+          <a href="following.php">Followings<span class="badge badge-pill badge-default"><?php echo $following['following_count']; ?></span></a>
+        </div>
+
         <?php foreach ($tweet_list as $tweet ) { ?>
-          
         <div class="msg">
           <img src="picture_path/<?php echo $tweet['picture_path'];?>" width="48" height="48">
           <p>
-            <?php echo $tweet['tweet']; ?><span class="name"><?php echo $tweet['nick_name'];?></span>
+            <?php echo $tweet['tweet']; ?><span class="name"> 『<?php echo $tweet['nick_name'];?>』</span>
             <?php if($_SESSION['id'] !== $tweet['member_id'] ) {?>
             [<a href="reply.php?tweet_id=<?php echo $tweet['tweet_id']; ?>">Re</a>]
             <?php }?>
+<!-- いいね -->
+            <?php if($tweet['login_like_flag'] == 0){ ?>
+            <a href="like.php?like_tweet_id=<?php echo $tweet['tweet_id']; ?>&page=<?php echo $page; ?>"><i class="fa fa-thumbs-o-up"></i>いいね</a>
+            <?php } else { ?>
+
+            <a href="like.php?dislike_tweet_id=<?php echo $tweet['tweet_id']; ?>&page=<?php echo $page; ?>"><i class="fa fa-thumbs-o-down">BAD</i></a>
+            <?php } ?>
+<!-- いいね数の表示 -->
+            <a href="like_user.php?tweet_id=<?php echo $tweet['tweet_id']; ?>&page=<?php echo $page?>" style="color: green;">いいね: <?php echo $tweet['like_cnt']; ?> 個</a>
+
           </p>
           <p class="day">
             <a href="view.php?tweet_id=<?php echo $tweet['tweet_id']; ?>">
@@ -208,7 +267,7 @@ session_start();
 <!-- パラメーター -->
 <?php if($_SESSION['id'] == $tweet['member_id'] ) {?>
             [<a href="edit.php?tweet_id=<?php echo $tweet['tweet_id']; ?>" style="color: #00994C;">編集</a>]
-            [<a href="delete.php?tweet_id=<?php echo $tweet['tweet_id']; ?>" style="color: #F33;">削除</a>]
+            [<a href="delete.php?tweet_id=<?php echo $tweet['tweet_id']; ?>" style="color: #F33;" onclick="return confirm('本当に削除しますか？');">削除</a>]
              <?php } ?>
              <!-- 返信もとのメッセージの詳細 -->
              <?php if($tweet['reply_tweet_id'] >=1) {?>
